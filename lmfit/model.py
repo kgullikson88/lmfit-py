@@ -462,10 +462,6 @@ class Model(object):
             if name in self.independent_vars:
                 fcn_kws[name] = kwargs[name]
                 del kwargs[name]
-            #if not name in self.independent_vars:
-            #    warnings.warn("The keyword argument %s does not" % name +
-            #                  "match any arguments of the model function." +
-            #                  "It will be ignored.", UserWarning)
 
         # If any parameter is not initialized raise a more helpful error.
         missing_param = any([p not in params.keys()
@@ -500,8 +496,6 @@ class Model(object):
             if not np.isscalar(fcn_kws[var]):
                 fcn_kws[var] = _align(fcn_kws[var], mask, data)
 
-        print( fcn_kws.keys() )
-        print( kwargs.keys() )
         output = ModelFit(self, params, method=method, iter_cb=iter_cb,
                           scale_covar=scale_covar, fcn_kws=fcn_kws, **kwargs)
         output.fit(data=data, weights=weights)
