@@ -399,7 +399,7 @@ class Model(object):
         return result
 
     def fit(self, data, params=None, weights=None, method='leastsq',
-            iter_cb=None, scale_covar=True, verbose=True, **kwargs):
+            iter_cb=None, scale_covar=True, verbose=True, fit_kws=None, **kwargs):
         """Fit the model to the data.
 
         Parameters
@@ -413,6 +413,8 @@ class Model(object):
         scale_covar:  bool (default True) whether to auto-scale covariance matrix
         verbose: bool (default True) print a message when a new parameter is
             added because of a hint.
+        fit_kws: dict
+            default fitting options, such as xtol and maxfev, for scipy optimizer
         keyword arguments: optional, named like the arguments of the
             model function, will override params. See examples below.
 
@@ -456,12 +458,12 @@ class Model(object):
                 params[name].set(value=p)
             del kwargs[name]
 
-        # All remaining kwargs should correspond to independent variables or fit keywords.
-        fcn_kws = {}
+        # All remaining kwargs should correspond to independent variables.
         for name in kwargs.keys():
-            if name in self.independent_vars:
-                fcn_kws[name] = kwargs[name]
-                del kwargs[name]
+            if not name in self.independent_vars:
+                warnings.warn("The keyword argument %s does not" % name +
+                              "match any arguments of the model function." +
+                              "It will be ignored.", UserWarning)
 
         # If any parameter is not initialized raise a more helpful error.
         missing_param = any([p not in params.keys()
@@ -477,9 +479,9 @@ class Model(object):
         if not hasattr(data, '__array__'):
             data = np.asfarray(data)
         for var in self.independent_vars:
-            var_data = fcn_kws[var]
+            var_data = kwargs[var]
             if (not hasattr(var_data, '__array__')) and (not np.isscalar(var_data)):
-                fcn_kws[var] = np.asfarray(var_data)
+                kwargs[var] = np.asfarray(var_data)
 
         # Handle null/missing values.
         mask = None
@@ -493,11 +495,14 @@ class Model(object):
         # If independent_vars and data are alignable (pandas), align them,
         # and apply the mask from above if there is one.
         for var in self.independent_vars:
-            if not np.isscalar(fcn_kws[var]):
-                fcn_kws[var] = _align(fcn_kws[var], mask, data)
+            if not np.isscalar(kwargs[var]):
+                kwargs[var] = _align(kwargs[var], mask, data)
+
+        if fit_kws is None:
+            fit_kws = {}
 
         output = ModelFit(self, params, method=method, iter_cb=iter_cb,
-                          scale_covar=scale_covar, fcn_kws=fcn_kws, **kwargs)
+                          scale_covar=scale_covar, fcn_kws=kwargs, **fit_kws)
         output.fit(data=data, weights=weights)
         return output
 
